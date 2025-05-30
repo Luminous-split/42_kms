@@ -6,5 +6,5 @@
 
 <p align="center">
   <img src="https://img.shields.io/badge/ScriptKiddy->_<-black?style=for-the-badge&logo=gnubash&logoColor=white" />
-  <img src="https://img.shields.io/badge/status-active-success?style=for-the-badge&logo=hackthebox&logoColor=white" />
+  <img src="https://img.shields.io/badge/status-Complicated-success?style=for-the-badge&logo=hackthebox&logoColor=white" />
 </p>
