@@ -144,25 +144,7 @@ Duplicates are accepted (the subject leaves this to us).
 
 ---
 
-## 5. Number of comparisons
-
-Ford-Johnson's worst case for `n` elements is
-`F(n) = sum for k = 1..n of ceil(log2(3k / 4))`.
-
-Measured with a comparison counter on random inputs (worst of 10 runs):
-
-| n | measured | theoretical max F(n) | plain merge sort worst case |
-|---|---------:|---------------------:|----------------------------:|
-| 5 | 7 | 7 | 8 |
-| 21 | 66 | 66 | 74 |
-| 100 | 530 | 534 | 573 |
-| 3000 | 30404 | 30546 | 31905 |
-
-So the implementation never goes over the Ford-Johnson limit.
-
----
-
-## 6. Error handling
+## 5. Error handling
 
 `Error` is printed on stderr (exit code 1) when:
 
@@ -179,7 +161,7 @@ So the implementation never goes over the Ford-Johnson limit.
 
 ---
 
-## 7. Timing
+## 6. Timing
 
 - Measured with `std::clock()` and shown in microseconds (`us`).
 - As the subject asks, the time includes the **data management** (parsing the
@@ -191,7 +173,7 @@ So the implementation never goes over the Ford-Johnson limit.
 
 ---
 
-## 8. Quick checks for the evaluation
+## 7. Quick checks for the evaluation
 
 ```sh
 # Is the output really sorted?
