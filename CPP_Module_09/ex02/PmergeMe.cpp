@@ -43,42 +43,32 @@ struct IndexLess
 	bool operator()(size_t a, size_t b) const { return (vals[a] < vals[b]); }
 };
 
+/*
+ * Insertion step for one level.
+ * chain:     the sorted big elements of this level (a1 < a2 < ... < am)
+ * partner:   partner[offset + a] is the small element paired with a
+ * straggler: the unpaired element of this level, or none == vals.size()
+ * After the call, chain holds every element of this level, sorted.
+ */
 template <typename V, typename I>
-static void	mergeInsert(const V &vals, I &idx)
+static void	insertPending(const V &vals, I &chain, const I &partner,
+				size_t offset, size_t straggler)
 {
 	IndexLess<V>	less(vals);
-	size_t			n = idx.size();
-	I				mainChain;
+	size_t			none = vals.size();
+	size_t			pairs = chain.size();
 	I				pend;
-	I				partner(vals.size());
+	I				sortedBigs(chain);
 
-	if (n < 2)
-		return ;
-	// 1. Pair up elements, keep the larger of each pair in the main chain
-	for (size_t i = 0; i + 1 < n; i += 2)
-	{
-		size_t	big = idx[i];
-		size_t	small = idx[i + 1];
-
-		if (less(big, small))
-			std::swap(big, small);
-		mainChain.push_back(big);
-		partner[big] = small;
-	}
-	// 2. Recursively sort the larger elements
-	mergeInsert(vals, mainChain);
-	// 3. Build the pend chain in the order of the sorted larger elements
-	size_t	pairs = mainChain.size();
+	// Build the pend chain in the order of the sorted big elements
 	for (size_t k = 0; k < pairs; ++k)
-		pend.push_back(partner[mainChain[k]]);
-	if (n % 2)
-		pend.push_back(idx[n - 1]);
-
-	I	sortedBigs(mainChain);
+		pend.push_back(partner[offset + chain[k]]);
+	if (straggler != none)
+		pend.push_back(straggler);
 
 	// b1 is smaller than a1, so it goes first without any comparison
-	mainChain.insert(mainChain.begin(), pend[0]);
-	// 4. Insert the rest following the Jacobsthal sequence (1, 3, 5, 11, 21, ...)
+	chain.insert(chain.begin(), pend[0]);
+	// Insert the rest following the Jacobsthal sequence (1, 3, 5, 11, 21, ...)
 	size_t	prev = 1;
 	size_t	jPrev = 1;
 	size_t	jCurr = 3;
@@ -89,19 +79,68 @@ static void	mergeInsert(const V &vals, I &idx)
 		for (size_t j = hi; j > prev; --j)
 		{
 			size_t						elem = pend[j - 1];
-			typename I::iterator		bound = mainChain.end();
+			typename I::iterator		bound = chain.end();
 
 			// b_j only needs to be compared with elements before its partner a_j
 			if (j <= pairs)
-				bound = std::find(mainChain.begin(), mainChain.end(), sortedBigs[j - 1]);
-			mainChain.insert(std::lower_bound(mainChain.begin(), bound, elem, less), elem);
+				bound = std::find(chain.begin(), chain.end(), sortedBigs[j - 1]);
+			chain.insert(std::lower_bound(chain.begin(), bound, elem, less), elem);
 		}
 		prev = hi;
 		size_t	next = jCurr + 2 * jPrev;
 		jPrev = jCurr;
 		jCurr = next;
 	}
-	idx = mainChain;
+}
+
+/*
+ * Iterative version of the recursion "sort the big elements, then insert the
+ * small ones". The pairing of a level never depends on a sorted result, so:
+ *  1. Going down: pair the elements level by level until one element is left,
+ *     and remember each level's partners and straggler.
+ *  2. Going up: from the top level back to level 0, insert that level's
+ *     small elements into the sorted chain.
+ * Every comparison is the same as in the recursive version.
+ */
+template <typename V, typename I>
+static void	mergeInsert(const V &vals, I &idx)
+{
+	IndexLess<V>	less(vals);
+	size_t			n = vals.size();
+	size_t			depth = 0;
+	I				level(idx);
+	I				partner;	// partner[depth * n + big] = small
+	I				stragglers;	// one per level, n when there is none
+
+	if (idx.size() < 2)
+		return ;
+	// 1. Going down: pair up, keep the bigger of each pair for the next level
+	while (level.size() > 1)
+	{
+		I	bigs;
+
+		partner.resize((depth + 1) * n);
+		for (size_t i = 0; i + 1 < level.size(); i += 2)
+		{
+			size_t	big = level[i];
+			size_t	small = level[i + 1];
+
+			if (less(big, small))
+				std::swap(big, small);
+			bigs.push_back(big);
+			partner[depth * n + big] = small;
+		}
+		stragglers.push_back(level.size() % 2 ? level.back() : n);
+		level = bigs;
+		++depth;
+	}
+	// 2. Going up: the top level has one element, so it is already sorted
+	while (depth > 0)
+	{
+		--depth;
+		insertPending(vals, level, partner, depth * n, stragglers[depth]);
+	}
+	idx = level;
 }
 
 template <typename V, typename I>

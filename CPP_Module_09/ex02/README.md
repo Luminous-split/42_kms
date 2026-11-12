@@ -58,7 +58,7 @@ Bigger tests:
 ## 4. The algorithm, step by step
 
 Ford-Johnson is designed to sort with **as few comparisons as possible**.
-It has 4 steps (see `mergeInsert` in `PmergeMe.cpp`):
+It has 4 steps (see `mergeInsert` and `insertPending` in `PmergeMe.cpp`):
 
 ### Step 1 – Make pairs
 Group the elements two by two and compare each pair once.
@@ -66,12 +66,36 @@ The bigger one goes into the **main chain**, the smaller one is remembered as
 its partner. If the count is odd, the last element is the **straggler**
 (left alone, inserted later).
 
-### Step 2 – Sort the big ones recursively
-Call `mergeInsert` again on the main chain (the bigger elements only).
-This is the "merge" part: it recurses until there is 1 element.
+### Step 2 – Sort the big ones (without recursion)
+The classic description says "sort the big elements recursively with the same
+algorithm". This implementation does the same work with **two loops instead
+of recursion**:
+
+1. **Going down:** repeat Step 1 on the big elements, then on the big
+   elements of the big elements, ... until only 1 element is left.
+   For every level it stores the partners (`partner[level * n + big] = small`)
+   and the straggler (`stragglers[level]`).
+2. **Going up:** the top level has 1 element, so it is already sorted.
+   Then, from the top level back to level 0, Steps 3 and 4 below
+   (`insertPending`) insert that level's small elements into the sorted chain.
+   The result of one level is the sorted main chain of the level below.
+
+This works because the pairing of a level never depends on a sorted result:
+the levels can all be built first and solved afterwards. It makes **exactly
+the same comparisons** as the recursive version (checked with a comparison
+counter on the same inputs), and runs at the same speed.
+
+```
+level 0:  3 5 9 7 4      pairs (3,5) (9,7), straggler 4  -> bigs 5 9
+level 1:  5 9            pair  (5,9)                      -> bigs 9
+level 2:  9              one element: stop going down
+
+going up: level 1: chain [9]   insert 5        -> [5 9]
+          level 0: chain [5 9] insert 3, 4, 7  -> [3 4 5 7 9]
+```
 
 ### Step 3 – Build the pend chain
-After the recursion the big elements are sorted: `a1 < a2 < ... < am`.
+After Step 2 the big elements are sorted: `a1 < a2 < ... < am`.
 The pend chain is their partners in that same order: `b1, b2, ..., bm`
 (plus the straggler at the end). We know `bi <= ai` for every pair.
 
@@ -102,7 +126,7 @@ The straggler has no partner, so it is searched in the whole chain.
 
 ```
 Pairs:            (3,5) (9,7)  straggler 4
-Big elements:     5 9          -> recursion -> sorted: 5 9
+Big elements:     5 9          -> level 1 (Step 2) -> sorted: 5 9
 Pend chain:       b1=3 (partner of 5), b2=7 (partner of 9), b3=4 (straggler)
 
 Insert b1 free:   3 5 9
